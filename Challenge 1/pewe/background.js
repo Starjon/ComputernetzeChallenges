@@ -13,18 +13,26 @@ function onrequest(req) {
   if (req.type=="image") {
      console.log("Ooh, it's a picture!");
   }
-  
+
   console.log(req);
   console.log("");
   for (i=0; i<req.requestHeaders.length; i++) {
-	  console.log("header[" + i + "]: " + req.requestHeaders[i].name + "=" + req.requestHeaders[i].value);
+    //Hide the browser and operating system
+	  if (req.requestHeaders[i].name == "User-Agent"){
+      //req.requestHeaders[i].value = "anonymous";
+      req.requestHeaders.splice(i,1);
+    }
+    //Hide the website the user is coming from
+    else if (req.requestHeaders[i].name == "Referer") {
+      req.requestHeaders.splice(i,1);
+    }
   }
 
   // req also contains an array called requestHeaders containing the name and value of each header.
   // You can access the name and value of the i'th header as req.requestHeaders[i].name and req.requestHeaders[i].value ,
   // with i from 0 up to (but not including) req.requestHeaders.length .
 
-  return {};
+  return {requestHeaders:req.requestHeaders};
 }
 
 
