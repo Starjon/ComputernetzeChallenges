@@ -1,5 +1,6 @@
 
 function onrequest(req) {
+  console.log("");
   // This function will be called everytime the browser is about to send out an http or https request.
   // The req variable contains all information about the request.
   // If we return {}  the request will be performed, without any further changes
@@ -11,11 +12,11 @@ function onrequest(req) {
 
   // let's do something special if an image is loaded:
   if (req.type=="image") {
-     console.log("Ooh, it's a picture!");
+    console.log("Ooh, it's a picture!");
   }
 
+  
   console.log(req);
-  console.log("");
   for (i=0; i<req.requestHeaders.length; i++) {
     //Hide the browser and operating system
 	  if (req.requestHeaders[i].name == "User-Agent"){
@@ -27,11 +28,14 @@ function onrequest(req) {
       req.requestHeaders.splice(i,1);
     }
   }
+  // Hide the website the user is coming from (again)
+  req.originUrl = undefined;
 
   // req also contains an array called requestHeaders containing the name and value of each header.
   // You can access the name and value of the i'th header as req.requestHeaders[i].name and req.requestHeaders[i].value ,
   // with i from 0 up to (but not including) req.requestHeaders.length .
 
+  console.log(req);
   return {requestHeaders:req.requestHeaders};
 }
 
