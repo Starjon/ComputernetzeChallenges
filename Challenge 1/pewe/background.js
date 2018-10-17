@@ -19,12 +19,12 @@ function onrequest(req) {
   console.log(req);
   for (i=0; i<req.requestHeaders.length; i++) {
     //Hide the browser and operating system
-	  if (req.requestHeaders[i].name.toLowerCase() == "User-Agent"){
+	  if (req.requestHeaders[i].name.toLowerCase() == "user-agent"){
       req.requestHeaders[i].value = "anonymous";
       //req.requestHeaders.splice(i,1);
     }
     //Hide the website the user is coming from
-    else if (req.requestHeaders[i].name.toLowerCase() == "Referer") {
+    else if (req.requestHeaders[i].name.toLowerCase() == "referer") {
       req.requestHeaders.splice(i,1);
     }
   }
