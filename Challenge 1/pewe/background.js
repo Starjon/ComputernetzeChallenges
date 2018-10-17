@@ -30,6 +30,10 @@ function onrequest(req) {
   }
   // Hide the website the user is coming from (again)
   req.originUrl = undefined;
+  // Hide information about forwarding website
+  req.forwarded = undefined;
+  // Hide information about proxy path
+  req.via = undefined;
 
   // req also contains an array called requestHeaders containing the name and value of each header.
   // You can access the name and value of the i'th header as req.requestHeaders[i].name and req.requestHeaders[i].value ,
