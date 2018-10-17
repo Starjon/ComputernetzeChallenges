@@ -11,7 +11,7 @@ function onrequest(req) {
   console.log("Loading: " + req.method +" "+ req.url + " "+ req.type);
 
   // let's do something special if an image is loaded:
-  if (req.type=="image") {
+  if (req.type.toLowerCase() == "image") {
     console.log("Ooh, it's a picture!");
   }
 
@@ -19,12 +19,12 @@ function onrequest(req) {
   console.log(req);
   for (i=0; i<req.requestHeaders.length; i++) {
     //Hide the browser and operating system
-	  if (req.requestHeaders[i].name == "User-Agent"){
+	  if (req.requestHeaders[i].name.toLowerCase() == "User-Agent"){
       req.requestHeaders[i].value = "anonymous";
       //req.requestHeaders.splice(i,1);
     }
     //Hide the website the user is coming from
-    else if (req.requestHeaders[i].name == "Referer") {
+    else if (req.requestHeaders[i].name.toLowerCase() == "Referer") {
       req.requestHeaders.splice(i,1);
     }
   }
