@@ -20,8 +20,8 @@ function onrequest(req) {
   for (i=0; i<req.requestHeaders.length; i++) {
     //Hide the browser and operating system
 	  if (req.requestHeaders[i].name == "User-Agent"){
-      //req.requestHeaders[i].value = "anonymous";
-      req.requestHeaders.splice(i,1);
+      req.requestHeaders[i].value = "anonymous";
+      //req.requestHeaders.splice(i,1);
     }
     //Hide the website the user is coming from
     else if (req.requestHeaders[i].name == "Referer") {
