@@ -16,7 +16,7 @@ function onrequest(req) {
   
   console.log(req);
   console.log("");
-  for (int i=0; i<req.requestHeaders.length; i++) {
+  for (i=0; i<req.requestHeaders.length; i++) {
 	  console.log("header[" + i + "]: " + req.requestHeaders[i].name + "=" + req.requestHeaders[i].value);
   }
 
