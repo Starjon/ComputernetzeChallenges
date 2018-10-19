@@ -10,36 +10,25 @@ function onrequest(req) {
   // log what file we're going to fetch:
   console.log("Loading: " + req.method +" "+ req.url + " "+ req.type);
 
-  // let's do something special if an image is loaded:
-  if (req.type.toLowerCase() == "image") {
-    console.log("Ooh, it's a picture!");
-  }
-
-  
-  console.log(req);
   for (i=0; i<req.requestHeaders.length; i++) {
     //Hide the browser and operating system
-	  if (req.requestHeaders[i].name.toLowerCase() == "user-agent"){
-      req.requestHeaders[i].value = "anonymous";
-      //req.requestHeaders.splice(i,1);
+    if (req.requestHeaders[i].name.toLowerCase() == "user-agent"){
+      req.requestHeaders[i].value = "anonymous";    // Deleting the entry completely causes issues with some websites, so it's replaced with useless information.
+      console.log("Hiding browser and operating system.");
     }
     //Hide the website the user is coming from
     else if (req.requestHeaders[i].name.toLowerCase() == "referer") {
       req.requestHeaders.splice(i,1);
+      console.log("Hiding refering website.");
     }
   }
+
   // Hide the website the user is coming from (again)
-  req.originUrl = undefined;
-  // Hide information about forwarding website
-  req.forwarded = undefined;
-  // Hide information about proxy path
-  req.via = undefined;
+  if (req.originUrl != undefined) {
+    req.originUrl = undefined;
+    console.log("Hiding original URL.");
+  }
 
-  // req also contains an array called requestHeaders containing the name and value of each header.
-  // You can access the name and value of the i'th header as req.requestHeaders[i].name and req.requestHeaders[i].value ,
-  // with i from 0 up to (but not including) req.requestHeaders.length .
-
-  console.log(req);
   return {requestHeaders:req.requestHeaders};
 }
 
