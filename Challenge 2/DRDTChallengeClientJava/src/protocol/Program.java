@@ -17,7 +17,7 @@ import java.io.InputStream;
 public class Program {
 
     // Change to your group authentication token
-    private static String groupToken = "get-your-key-from-the-website";
+    private static String groupToken = "bfef5071-943b-4575-b7aa-5e5a41ed73a8";
 
     // Choose ID of test file to transmit: 1, 2, 3, 4 or 5
     // Sizes in bytes are: 248, 2085, 6267, 21067, 53228
