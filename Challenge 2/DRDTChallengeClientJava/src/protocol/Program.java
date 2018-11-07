@@ -24,7 +24,7 @@ public class Program {
     private static int file = 1;
     
     // Change to your protocol implementation
-    private static IRDTProtocol protocolImpl = new NaiveDataTransferProtocol();
+    private static IRDTProtocol protocolImpl = new ReliableDataTransferProtocol();
     
     // Challenge server address
     // See the website for the hostname of the server

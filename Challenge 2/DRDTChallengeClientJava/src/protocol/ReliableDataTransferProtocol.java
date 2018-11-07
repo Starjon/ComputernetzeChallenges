@@ -77,7 +77,9 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
             while (Utils.modulo(
                     this.nextPacketId % MAX_PACKETS - this.lastAcknowledged % MAX_PACKETS,
                     MAX_PACKETS) < MAX_PACKETS / 2) {
-                sendPacket(packets.get(this.nextPacketId));
+                if (this.nextPacketId < packets.size()) {
+                    sendPacket(packets.get(this.nextPacketId));
+                }
             }
             try {
                 Thread.sleep(10);
