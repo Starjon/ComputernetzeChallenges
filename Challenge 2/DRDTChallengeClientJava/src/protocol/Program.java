@@ -15,24 +15,24 @@ import java.io.InputStream;
  * @version 12-02-2018
  */
 public class Program {
-
+    
     // Change to your group authentication token
-    private static String groupToken = "bfef5071-943b-4575-b7aa-5e5a41ed73a8";
-
+    private static String groupToken = "a1d5c490-6c94-4390-8fd4-30e845b15db6";
+    
     // Choose ID of test file to transmit: 1, 2, 3, 4 or 5
     // Sizes in bytes are: 248, 2085, 6267, 21067, 53228
     private static int file = 1;
-
+    
     // Change to your protocol implementation
     private static IRDTProtocol protocolImpl = new NaiveDataTransferProtocol();
-
+    
     // Challenge server address
     // See the website for the hostname of the server
     private static String serverAddress = "networkingchallenges.ewi.utwente.nl";
-
+    
     // Challenge server port
     private static int serverPort = 8002;
-
+    
     /*
      *
      *
@@ -47,16 +47,16 @@ public class Program {
         DRDTChallengeClient client = null;
         try {
             System.out.print("[FRAMEWORK] Starting client... ");
-
+            
             // Create the client
             client = new DRDTChallengeClient(serverAddress, serverPort, groupToken);
-
+            
             System.out.println("Done.");
-
+            
             System.out.println("[FRAMEWORK] Press Enter to start the simulation as sender...");
             System.out.println("[FRAMEWORK] (Simulation will be started automatically as receiver " +
-                                                "when the other client in the group issues the start command)");
-
+                    "when the other client in the group issues the start command)");
+            
             boolean startRequested = false;
             InputStream inputStream = new BufferedInputStream(System.in);
             while (!client.isSimulationStarted() && !client.isSimulationFinished()) {
@@ -67,9 +67,9 @@ public class Program {
                 }
                 Thread.sleep(10);
             }
-
+            
             System.out.println("[FRAMEWORK] Simulation started!");
-
+            
             protocolImpl.setNetworkLayer(new NetworkLayer(client));
             protocolImpl.setFileID(client.getFileID());
             if (startRequested) {
@@ -80,7 +80,7 @@ public class Program {
                 protocolImpl.receiver();
                 client.sendChecksumOut();
             }
-
+            
         } catch (IOException e) {
             System.out.println("[FRAMEWORK] Could not start the client, because: ");
             e.printStackTrace();
