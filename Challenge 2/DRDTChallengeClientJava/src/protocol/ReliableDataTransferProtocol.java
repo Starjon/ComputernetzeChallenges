@@ -2,28 +2,21 @@ package protocol;
 
 import client.Utils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ReliableDataTransferProtocol extends IRDTProtocol {
     
     private static final int HEADER_SIZE = 1; // number of header bytes in each packet
-    private static final int DATA_SIZE = 128; // max. number of user data bytes in each packet
+    private static final int DATA_SIZE = 8; // max. number of user data bytes in each packet
     
-    private static final int HEADER_IDS = 256;
+    private static final int MAX_PACKETS = 8;
 
-    private static final int TIMEOUT_MS = 1000;
-    private static final Object SIZE_PACKET_TAG = new Object();
+    private static final int TIMEOUT_MS = 5000;
 
-    private Integer[] fileContents;
-    
-    private Object lock = new Object();
-    
-    // Might be accessed from another thread, thus volatile.
-    private volatile boolean sizePacketAcknowledged = false;
-    
     private boolean[] acknowledgements;
     private boolean transmissionFinished;
-    private int[] sequenceIdToPacketId = new int[HEADER_IDS];
+    private int[] sequenceIdToPacketId = new int[MAX_PACKETS];
     private int lastAcknowledged = -1;
     private int nextPacketId;
     
@@ -48,117 +41,100 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
         return result;
     }
 
-    private void sendPacketForFirstTime(Integer[] packet) {
+    private void sendPacket(Integer[] packet) {
         this.acknowledgements[this.nextPacketId] = false;
         setHeader(packet);
-        sendPacket(this.nextPacketId, packet);
-        this.nextPacketId++;
-    }
-    
-    private void sendPacket(int packetId, Integer[] packet) {
         registerTimeout(this.nextPacketId, packet);
+
         getNetworkLayer().sendPacket(packet);
-        System.out.println("Sent one packet with id=" + packetId + " and header=" + packet[0]);
+        System.out.println("Sent one packet with header=" + packet[0]);
+
+        this.nextPacketId++;
     }
 
     private void setHeader(Integer[] packet) {
-        packet[0] = this.nextPacketId % HEADER_IDS;
-        sequenceIdToPacketId[this.nextPacketId % HEADER_IDS] = this.nextPacketId;
+        packet[0] = this.nextPacketId % MAX_PACKETS;
+        sequenceIdToPacketId[this.nextPacketId % MAX_PACKETS] = this.nextPacketId;
     }
     
 
     private void registerTimeout(int packetId, Integer[] packet) {
         client.Utils.Timeout.SetTimeout(TIMEOUT_MS, this, new Object[] {packetId, packet});
     }
-    
-    private void checkForAcknowledgements() {
-        List<Integer[]> packets = new ArrayList<>();
-        for (Integer[] packet = getNetworkLayer().receivePacket(); packet != null; packet =
-                getNetworkLayer().receivePacket()) {
-            packets.add(packet);
-        }
-        
-        synchronized (this.lock) {
-            for (Integer[] packet : packets) {
-                int packetHeaderId = packet[0];
-                int packetId = sequenceIdToPacketId[packetHeaderId];
-                this.acknowledgements[packetId] = true;
-                
-                while (packetId - 1 == this.lastAcknowledged && this.acknowledgements[packetId]
-                        && lastAcknowledged + 1 < this.acknowledgements.length) {
-                    lastAcknowledged++;
-                    packetId++;
-                }
-                
-                if (this.lastAcknowledged + 1 == this.acknowledgements.length) {
-                    this.transmissionFinished = true; // notwendig?
-                }
-                
-                // if (sequenceIdToPacketId[packetId] == packets.size() - 1) {
-                // this.transmissionFinished = true; // sicher?
-                // } else if ((this.lastAcknowledged + 1) % HEADER_IDS == packetId) {
-                // this.lastAcknowledged++;
-                // while (sequenceIdToPacketId[lastAcknowledged] < packets.size() - 1
-                // && this.acknowledgements[sequenceIdToPacketId[lastAcknowledged] + 1]) {
-                // this.lastAcknowledged++;
-                // }
-                // }
-            }
-        }
-    }
 
     @Override
     public void sender() {
         System.out.println("Sending...");
 
-        this.fileContents = Utils.getFileContents(getFileID());
-        List<Integer[]> packets = splitIntoPackets(this.fileContents);
+        List<Integer[]> packets = splitIntoPackets(Utils.getFileContents(getFileID()));
         this.acknowledgements = new boolean[packets.size()];
 
         Integer[] sizePacket = new Integer[1];
-        sizePacket[0] = this.fileContents.length;
+        sizePacket[0] = Utils.getFileContents(getFileID()).length;
         getNetworkLayer().sendPacket(sizePacket);
-        client.Utils.Timeout.SetTimeout(TIMEOUT_MS, this, SIZE_PACKET_TAG);
-        while (getNetworkLayer().receivePacket() == null) {
+
+        boolean sizeReceived = false;
+        while (!sizeReceived){
+            Integer[] ackPacket = getNetworkLayer().receivePacket();
+            if (ackPacket != null){sizeReceived = true;}
             try {
-                lock.wait(10);
+                Thread.sleep(10);
+            }catch (InterruptedException e){
+                throw new RuntimeException("Size packet not delivered");
+            }
+        }
+        System.out.println("Size delivered");
+
+        while (!transmissionFinished) {
+            while (Utils.modulo(
+                    this.nextPacketId % MAX_PACKETS - this.lastAcknowledged % MAX_PACKETS,
+                    MAX_PACKETS) <= MAX_PACKETS / 2) {
+                if (this.nextPacketId < packets.size()) {
+                    sendPacket(packets.get(this.nextPacketId));
+                }
+            }
+            try {
+                Thread.sleep(10);
+                Integer[] ackPacket = getNetworkLayer().receivePacket();
+                if (ackPacket != null) {
+                    System.out.println("Received ack for packet " + ackPacket[0].toString());
+                    this.acknowledgements[sequenceIdToPacketId[ackPacket[0]]] = true;
+                    if (sequenceIdToPacketId[ackPacket[0]] == packets.size() - 1){
+                        this.transmissionFinished = true;
+                    }else if ((this.lastAcknowledged + 1) % MAX_PACKETS == ackPacket[0]) {
+                        this.lastAcknowledged++;
+                        while(lastAcknowledged < packets.size() - 1 &&
+                                this.acknowledgements[lastAcknowledged + 1]){
+                            this.lastAcknowledged++;
+                        }
+                    }
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
-        this.sizePacketAcknowledged = true;
-
-        boolean justChecked = false;
-        while (!transmissionFinished) {
-            while (Utils.modulo(
-                    this.nextPacketId % HEADER_IDS - this.lastAcknowledged % HEADER_IDS,
-                    HEADER_IDS) < HEADER_IDS / 2) {
-                justChecked = false;
-                if (this.nextPacketId < packets.size()) {
-                    sendPacketForFirstTime(packets.get(this.nextPacketId));
-                }
-            }
-            if (justChecked) {
-                justChecked = false;
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                justChecked = true;
-                this.checkForAcknowledgements();
-            }
-        }
+        
+        // schedule a timer for 1000 ms into the future, just to show how that works:
+//        Utils.Timeout.SetTimeout(1000, this, 28);
+        
+        // and loop and sleep; you may use this loop to check for incoming acks...
+//        boolean stop = false;
+//        while (!stop) {
+//            try {
+//                Thread.sleep(10);
+//            } catch (InterruptedException e) {
+//                stop = true;
+//            }
+//        }
     }
-    
+
 
 
     private int calculatePos(int sequenceNumber){
-        if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)){
-            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + HEADER_IDS + sequenceNumber;
-        } else {
-            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber;
+        if (sequenceNumber < (this.receivedUpTo % MAX_PACKETS)){
+            return (this.receivedUpTo - (this.receivedUpTo % MAX_PACKETS)) + MAX_PACKETS + sequenceNumber;
+        }else {
+            return (this.receivedUpTo - (this.receivedUpTo % MAX_PACKETS)) + sequenceNumber;
         }
     }
 
@@ -174,9 +150,10 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
     @Override
     public void receiver() {
         System.out.println("Receiving...");
-        
+
+        Integer[] sizePacket = new Integer[1];
         while (this.sizeBytes < 0){
-            Integer[] sizePacket = getNetworkLayer().receivePacket();
+            sizePacket = getNetworkLayer().receivePacket();
             if (sizePacket != null){
                 this.sizeBytes = sizePacket[0];
             }
@@ -186,6 +163,8 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
                 throw new RuntimeException(e);
             }
         }
+
+        getNetworkLayer().sendPacket(sizePacket);
 
         Integer[] fileContents = new Integer[sizeBytes];
         amountOfPackets = sizeBytes / DATA_SIZE + 1;
@@ -210,12 +189,13 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
                 int pos = calculatePos(packet[0]);
                 int datalen = packet.length - HEADER_SIZE;
 
-                System.arraycopy(packet, HEADER_SIZE, fileContents, pos, datalen);
+                System.arraycopy(packet, HEADER_SIZE, fileContents, pos * DATA_SIZE, datalen);
                 this.received[pos] = true;
 
                 updateReceivedUpTo(pos);
 
                 Integer[] ackPacket = {packet[0]};
+                System.out.println("sending ack for packet " + packet[0]);
                 getNetworkLayer().sendPacket(ackPacket);
 
                 if (receivedUpTo == amountOfPackets -1){
@@ -238,21 +218,16 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
     
     @Override
     public void TimeoutElapsed(Object tag) {
-        if (tag == SIZE_PACKET_TAG && !this.sizePacketAcknowledged) {
-            getNetworkLayer().sendPacket(new Integer[] {this.fileContents.length});
+        Object[] data = (Object[]) tag;
+        Integer packetId = (Integer) data[0];
+        Integer[] packet = (Integer[]) data[1];
+        System.out.println("Received timeout for packet " + data[0].toString());
+        if (this.acknowledgements[packetId]) {
             return;
         }
         
-        Object[] data = (Object[]) tag;
-        Integer packetId = sequenceIdToPacketId[(Integer) data[0]];
-        Integer[] packet = (Integer[]) data[1];
-        
-        synchronized (this.lock) {
-            if (this.acknowledgements[packetId]) {
-                return;
-            }
-        }
-        
-        sendPacket(packetId, packet);
+        registerTimeout(packetId, packet);
+        getNetworkLayer().sendPacket(packet);
+        System.out.println("Sent one packet with header=" + packet[0]);
     }
 }
