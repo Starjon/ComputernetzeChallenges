@@ -73,6 +73,7 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
         sizePacket[0] = Utils.getFileContents(getFileID()).length;
         getNetworkLayer().sendPacket(sizePacket);
 
+        //TODO: RESEND SIZE UPON SPECIAL TIMEOUT
         boolean sizeReceived = false;
         while (!sizeReceived){
             Integer[] ackPacket = getNetworkLayer().receivePacket();
