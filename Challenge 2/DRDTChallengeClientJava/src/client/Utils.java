@@ -16,7 +16,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Utils {
     private Utils() {
     }
-
+    
+    public static int modulo(int a, int mod) {
+        return (((a % mod) + mod) % mod);
+    }
+    
     /**
      * Helper method to get the current process ID
      *
@@ -25,11 +29,11 @@ public class Utils {
     public static int getProcessId() {
         final String jvmName = ManagementFactory.getRuntimeMXBean().getName();
         final int index = jvmName.indexOf('@');
-
+        
         if (index < 1) {
             return 0;
         }
-
+        
         try {
             return Integer.parseInt(jvmName.substring(0, index));
         } catch (NumberFormatException e) {
@@ -45,13 +49,13 @@ public class Utils {
         File fileToTransmit = new File(String.format("rdtcInput%d.png", id));
         try (FileInputStream fileStream = new FileInputStream(fileToTransmit)) {
             Integer[] fileContents = new Integer[(int) fileToTransmit.length()];
-
+            
             for (int i = 0; i < fileContents.length; i++) {
                 int nextByte = fileStream.read();
                 if (nextByte == -1) {
                     throw new Exception("File size is smaller than reported");
                 }
-
+                
                 fileContents[i] = nextByte;
             }
             return fileContents;
@@ -61,7 +65,7 @@ public class Utils {
             return null;
         }
     }
-
+    
     /**
      * Writes the contents of the fileContents array to the specified file.
      * @param fileContents the contents to write
@@ -78,7 +82,7 @@ public class Utils {
             System.err.println(e.getStackTrace());
         }
     }
-
+    
     /**
      * Helper class for setting timeouts. Supplied for convenience.
      * 
@@ -90,7 +94,7 @@ public class Utils {
         private static Thread eventTriggerThread;
         private static boolean started = false;
         private static ReentrantLock lock = new ReentrantLock();
-
+        
         /**
          * Starts the helper thread
          */
@@ -101,7 +105,7 @@ public class Utils {
             eventTriggerThread = new Thread(new Timeout());
             eventTriggerThread.start();
         }
-
+        
         /**
          * Stops the helper thread
          */
@@ -115,7 +119,7 @@ public class Utils {
             } catch (InterruptedException e) {
             }
         }
-
+        
         /**
          * Set a timeout
          * 
@@ -128,8 +132,8 @@ public class Utils {
                 ITimeoutEventHandler handler, Object tag) {
             Date elapsedMoment = new Date();
             elapsedMoment
-                    .setTime(elapsedMoment.getTime() + millisecondsTimeout);
-
+            .setTime(elapsedMoment.getTime() + millisecondsTimeout);
+            
             lock.lock();
             if (!eventHandlers.containsKey(elapsedMoment)) {
                 eventHandlers.put(elapsedMoment,
@@ -142,7 +146,7 @@ public class Utils {
             eventHandlers.get(elapsedMoment).get(handler).add(tag);
             lock.unlock();
         }
-
+        
         /**
          * Do not call this
          */
@@ -152,14 +156,14 @@ public class Utils {
             ArrayList<Date> datesToRemove = new ArrayList<>();
             HashMap<ITimeoutEventHandler, List<Object>> handlersToInvoke = new HashMap<>();
             Date now;
-
+            
             while (runThread) {
                 try {
                     now = new Date();
-
+                    
                     // If any timeouts have elapsed, trigger their handlers
                     lock.lock();
-
+                    
                     for (Date date : eventHandlers.keySet()) {
                         if (date.before(now)) {
                             datesToRemove.add(date);
@@ -175,15 +179,15 @@ public class Utils {
                             }
                         }
                     }
-
+                    
                     // Remove elapsed events
                     for (Date date : datesToRemove) {
                         eventHandlers.remove(date);
                     }
                     datesToRemove.clear();
-
+                    
                     lock.unlock();
-
+                    
                     // Invoke the event handlers outside of the lock, to prevent
                     // deadlocks
                     for (ITimeoutEventHandler handler : handlersToInvoke
@@ -191,13 +195,13 @@ public class Utils {
                         handlersToInvoke.get(handler).forEach(handler::TimeoutElapsed);
                     }
                     handlersToInvoke.clear();
-
+                    
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
                     runThread = false;
                 }
             }
-
+            
         }
     }
 }

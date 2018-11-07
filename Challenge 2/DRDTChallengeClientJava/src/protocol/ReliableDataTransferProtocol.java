@@ -7,17 +7,25 @@ import java.util.List;
 
 public class ReliableDataTransferProtocol extends IRDTProtocol {
     
-    private static final int HEADERSIZE = 1; // number of header bytes in each packet
-    private static final int DATASIZE = 128; // max. number of user data bytes in each packet
+    private static final int HEADER_SIZE = 1; // number of header bytes in each packet
+    private static final int DATA_SIZE = 128; // max. number of user data bytes in each packet
+    
+    private static final int MAX_PACKETS = 256;
+    
+    private static final int TIMEOUT_MS = 1000;
+    
+    private boolean[] acknowlegdements;
+    private int lastAcknowledged = -1;
+    private int nextPacketId;
     
     private List<Integer[]> splitIntoPackets(Integer[] data) {
-        List<Integer[]> result = new ArrayList<>(data.length / DATASIZE + HEADERSIZE);
+        List<Integer[]> result = new ArrayList<>(data.length / DATA_SIZE + HEADER_SIZE);
         
         int i = 0;
         while (i < data.length) {
-            int dataLength = Math.min(DATASIZE, data.length - i);
-            Integer[] packet = new Integer[HEADERSIZE + dataLength];
-            System.arraycopy(data, i, packet, HEADERSIZE, dataLength);
+            int dataLength = Math.min(DATA_SIZE, data.length - i);
+            Integer[] packet = new Integer[HEADER_SIZE + dataLength];
+            System.arraycopy(data, i, packet, HEADER_SIZE, dataLength);
             result.add(packet);
             i += dataLength;
         }
@@ -25,30 +33,45 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
         return result;
     }
     
+    private void sendPacket(Integer[] packet) {
+        this.acknowlegdements[this.nextPacketId] = false;
+        setHeader(packet);
+        registerTimeout(this.nextPacketId, packet);
+        
+        getNetworkLayer().sendPacket(packet);
+        System.out.println("Sent one packet with header=" + packet[0]);
+        
+        this.nextPacketId++;
+    }
+    
+    private void setHeader(Integer[] packet) {
+        packet[0] = this.nextPacketId % MAX_PACKETS;
+    }
+    
+    private void registerTimeout(int packetId, Integer[] packet) {
+        client.Utils.Timeout.SetTimeout(TIMEOUT_MS, this, new Object[] {packetId, packet});
+    }
+    
     @Override
     public void sender() {
         System.out.println("Sending...");
         
-        // read from the input file
-        Integer[] fileContents = Utils.getFileContents(getFileID());
+        List<Integer[]> packets = splitIntoPackets(Utils.getFileContents(getFileID()));
+        this.acknowlegdements = new boolean[packets.size()];
         
-        // keep track of where we are in the data
-        int filePointer = 0;
+        while (Utils.modulo(
+                this.nextPacketId % MAX_PACKETS - this.lastAcknowledged,
+                MAX_PACKETS) >= MAX_PACKETS / 2) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         
-        // create a new packet of appropriate size
-        int datalen = Math.min(DATASIZE, fileContents.length - filePointer);
-        Integer[] pkt = new Integer[HEADERSIZE + datalen];
-        // write something random into the header byte
-        pkt[0] = 123;
-        // copy databytes from the input file into data part of the packet, i.e., after the header
-        System.arraycopy(fileContents, filePointer, pkt, HEADERSIZE, datalen);
-        
-        // send the packet to the network layer
-        getNetworkLayer().sendPacket(pkt);
-        System.out.println("Sent one packet with header="+pkt[0]);
         
         // schedule a timer for 1000 ms into the future, just to show how that works:
-        client.Utils.Timeout.SetTimeout(1000, this, 28);
+        Utils.Timeout.SetTimeout(1000, this, 28);
         
         // and loop and sleep; you may use this loop to check for incoming acks...
         boolean stop = false;
@@ -88,9 +111,9 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
                 // append the packet's data part (excluding the header) to the fileContents array,
                 // first making it larger
                 int oldlength = fileContents.length;
-                int datalen = packet.length - HEADERSIZE;
+                int datalen = packet.length - HEADER_SIZE;
                 fileContents = Arrays.copyOf(fileContents, oldlength + datalen);
-                System.arraycopy(packet, HEADERSIZE, fileContents, oldlength, datalen);
+                System.arraycopy(packet, HEADER_SIZE, fileContents, oldlength, datalen);
                 
                 // and let's just hope the file is now complete
                 stop = true;
@@ -111,8 +134,16 @@ public class ReliableDataTransferProtocol extends IRDTProtocol {
     
     @Override
     public void TimeoutElapsed(Object tag) {
-        int z = (Integer) tag;
-        // handle expiration of the timeout:
-        System.out.println("Timer expired with tag=" + z);
+        Object[] data = (Object[]) tag;
+        Integer packetId = (Integer) data[0];
+        Integer[] packet = (Integer[]) data[1];
+        
+        if (this.acknowlegdements[packetId]) {
+            return;
+        }
+        
+        registerTimeout(packetId, packet);
+        getNetworkLayer().sendPacket(packet);
+        System.out.println("Sent one packet with header=" + packet[0]);
     }
 }
