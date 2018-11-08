@@ -1,6 +1,7 @@
 package protocol;
 
 import client.Utils;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,14 +38,12 @@ public class ReliableDataTransferSender {
     public void send() {
         System.out.println("Sending...");
         
-        // try {
-        // this.fileContents = ReliableDataTransferProtocol
-        // .compress(Utils.getFileContents(this.master.getFileID()));
-        // } catch (IOException e) {
-        // throw new RuntimeException(e);
-        // }
-        
-        this.fileContents = Utils.getFileContents(this.master.getFileID());
+        try {
+            this.fileContents = ReliableDataTransferProtocol
+                    .compress(Utils.getFileContents(this.master.getFileID()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         this.packets = splitIntoPackets();
         System.out.println("Split file of size " + fileContents.length + " bytes into "
                 + packets.size() + " packets.");
