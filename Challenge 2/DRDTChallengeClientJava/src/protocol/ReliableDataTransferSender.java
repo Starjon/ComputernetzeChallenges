@@ -39,6 +39,8 @@ public class ReliableDataTransferSender {
         
         this.fileContents = Utils.getFileContents(this.master.getFileID());
         this.packets = splitIntoPackets();
+        System.out.println("Split file of size " + fileContents.length + " bytes into "
+                + packets.size() + " packets.");
         sendSizePacket();
         this.acknowledgements = new boolean[this.packets.size()];
         
@@ -89,7 +91,7 @@ public class ReliableDataTransferSender {
     }
     
     private void sendSizePacket() {
-        int size = this.packets.size();
+        int size = this.fileContents.length;
         byte[] asBytes = BigInteger.valueOf(size).toByteArray();
         if (asBytes.length > DATA_SIZE) {
             throw new IllegalArgumentException("File is too big to transfer.");

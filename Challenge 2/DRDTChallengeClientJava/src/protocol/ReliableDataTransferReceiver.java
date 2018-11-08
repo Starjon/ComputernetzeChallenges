@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static protocol.ReliableDataTransferProtocol.HEADER_SIZE;
+import static protocol.ReliableDataTransferProtocol.DATA_SIZE;
 import static protocol.ReliableDataTransferProtocol.HEADER_IDS;
 import static protocol.ReliableDataTransferProtocol.SIZE_PACKET_HEADER;
 
@@ -14,7 +15,7 @@ public class ReliableDataTransferReceiver {
     private ReliableDataTransferProtocol master;
     
     private List<Integer[]> bufferedPackets;
-    private List<Integer> fileContents;
+    private Integer[] fileContents;
     private int amountOfPackets = -1;
     private int receivedUpTo = -1;
     private boolean[] received;
@@ -27,7 +28,6 @@ public class ReliableDataTransferReceiver {
         System.out.println("Receiving...");
         
         this.bufferedPackets = new ArrayList<>();
-        this.fileContents = new ArrayList<>();
         
         this.checkForPackets();
         while (this.receivedUpTo < this.amountOfPackets || this.amountOfPackets < 0) {
@@ -40,7 +40,7 @@ public class ReliableDataTransferReceiver {
         }
         
         // write to the output file
-        Utils.setFileContents(this.fileContents.toArray(new Integer[0]), this.master.getFileID());
+        Utils.setFileContents(this.fileContents, this.master.getFileID());
     }
     
     private void checkForPackets() {
@@ -74,8 +74,12 @@ public class ReliableDataTransferReceiver {
             bytes[i] = (byte) packet[i + HEADER_SIZE].intValue();
         }
         
-        this.amountOfPackets = new BigInteger(bytes).intValue();
+        this.fileContents = new Integer[new BigInteger(bytes).intValue()];
+        this.amountOfPackets = (int) Math.ceil(fileContents.length / (double) DATA_SIZE);
         this.received = new boolean[this.amountOfPackets];
+        
+        System.out.println("Received size packet, exepcting " + fileContents.length + " bytes in "
+                + this.amountOfPackets + " packets.");
         
         for (Integer[] other: this.bufferedPackets) {
             readPacket(other);
@@ -85,16 +89,19 @@ public class ReliableDataTransferReceiver {
     private void readPacket(Integer[] packet) {
         int header = packet[0];
         // tell the user
-        System.out.println("Received packet, length=" + packet.length + "  header byte=" + header);
+        System.out.println("Received packet, length=" + packet.length + " header=" + header);
         
         // append the packet's data part (excluding the header) to the fileContents array,
         // first making it larger
         int pos = calculatePos(header);
         
-        for (int i = HEADER_SIZE; i < packet.length; i++) {
-            this.fileContents.add(packet[i]);
+        if (!this.received[pos]) {
+            System.arraycopy(packet, HEADER_SIZE, fileContents, pos, packet.length - HEADER_SIZE);
+            // for (int i = HEADER_SIZE; i < packet.length; i++) {
+            // this.fileContents.add(packet[i]);
+            // }
+            this.received[pos] = true;
         }
-        this.received[pos] = true;
         
         updateReceivedUpTo(pos);
         sendAcknowledgement(header);
@@ -102,6 +109,7 @@ public class ReliableDataTransferReceiver {
     
     private void sendAcknowledgement(int header) {
         this.master.getNetworkLayer().sendPacket(new Integer[] {header});
+        System.out.println("Sent acknowledgement for packet with header=" + header);
     }
     
     private int calculatePos(int sequenceNumber) {
