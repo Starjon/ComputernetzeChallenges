@@ -112,9 +112,10 @@ public class ReliableDataTransferReceiver {
     }
     
     private int calculatePos(int sequenceNumber) {
-        if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)) {
-            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + HEADER_IDS
-                    + sequenceNumber;
+        if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)
+                && sequenceNumber < (this.receivedUpTo + HEADER_IDS / 2) % HEADER_IDS) {
+            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber
+                    + HEADER_IDS;
         } else {
             return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber;
         }
