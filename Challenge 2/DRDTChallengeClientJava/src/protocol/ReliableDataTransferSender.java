@@ -145,8 +145,11 @@ public class ReliableDataTransferSender {
                 int packetId = this.sequenceIdToPacketId[packetHeader];
                 this.acknowledgements[packetId] = true;
                 
-                while (packetId - 1 == this.lastAcknowledged && this.acknowledgements[packetId]
-                        && this.lastAcknowledged + 1 < this.acknowledgements.length) {
+                System.out.print("Acknowledged packet with id " + packetId + " and header " + packetHeader);
+                
+                while (packetId - 1 == this.lastAcknowledged
+                        && packetId < this.acknowledgements.length
+                        && this.acknowledgements[packetId]) {
                     this.lastAcknowledged++;
                     packetId++;
                 }
