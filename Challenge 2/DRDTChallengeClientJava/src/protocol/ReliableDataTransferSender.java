@@ -12,7 +12,7 @@ import static protocol.ReliableDataTransferProtocol.SIZE_PACKET_HEADER;
 
 public class ReliableDataTransferSender {
     
-    private static final int TIMEOUT_MS = 10000;
+    private static final int TIMEOUT_MS = 1000;
     
     private ReliableDataTransferProtocol master;
     
@@ -156,6 +156,7 @@ public class ReliableDataTransferSender {
                         && this.acknowledgements[packetId]) {
                     this.lastAcknowledged++;
                     packetId++;
+                    System.out.println("Moved lastAcknowledged to " + lastAcknowledged);
                 }
                 
                 if (this.lastAcknowledged + 1 == this.acknowledgements.length) {
