@@ -1,12 +1,9 @@
 package protocol;
 
 import client.Utils;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.DataFormatException;
-
 import static protocol.ReliableDataTransferProtocol.HEADER_SIZE;
 import static protocol.ReliableDataTransferProtocol.DATA_SIZE;
 import static protocol.ReliableDataTransferProtocol.HEADER_IDS;
@@ -42,11 +39,7 @@ public class ReliableDataTransferReceiver {
         }
         
         // write to the output file
-        try {
-            Utils.setFileContents(ReliableDataTransferProtocol.decompress(this.fileContents), this.master.getFileID());
-        } catch (IOException | DataFormatException e) {
-            throw new RuntimeException(e);
-        }
+        Utils.setFileContents(this.fileContents, this.master.getFileID());
     }
     
     private void checkForPackets() {
