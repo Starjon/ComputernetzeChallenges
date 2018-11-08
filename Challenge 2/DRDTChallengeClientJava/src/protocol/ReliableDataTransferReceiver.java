@@ -110,15 +110,25 @@ public class ReliableDataTransferReceiver {
     }
     
     private int calculatePos(int sequenceNumber) {
-        if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)
-                && sequenceNumber < (this.receivedUpTo + HEADER_IDS / 2) % HEADER_IDS
-                && (this.receivedUpTo + HEADER_IDS / 2)
-                        % HEADER_IDS < (this.receivedUpTo % HEADER_IDS)) {
-            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber
-                    + HEADER_IDS;
+        int r = this.receivedUpTo % HEADER_IDS;
+        int x = (this.receivedUpTo - r) / HEADER_IDS;
+        int a = sequenceNumber;
+        
+        if (a >= r + (HEADER_IDS / 2)) {
+            return (x - 1) * HEADER_IDS + a;
         } else {
-            return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber;
+            return x * HEADER_IDS + a;
         }
+        
+        // if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)
+        // && sequenceNumber < (this.receivedUpTo + HEADER_IDS / 2) % HEADER_IDS
+        // && (this.receivedUpTo + HEADER_IDS / 2)
+        // % HEADER_IDS < (this.receivedUpTo % HEADER_IDS)) {
+        // return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber
+        // + HEADER_IDS;
+        // } else {
+        // return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber;
+        // }
     }
     
     private void updateReceivedUpTo(int pos) {
