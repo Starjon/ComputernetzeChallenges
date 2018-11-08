@@ -169,7 +169,6 @@ public class ReliableDataTransferSender {
         Object[] data = (Object[]) tag;
         Integer packetId = (Integer) data[0];
         Integer[] packet = (Integer[]) data[1];
-        System.out.println("Received timeout for packet " + data[0].toString());
         
         if (packet[0] == SIZE_PACKET_HEADER) {
             if (this.sizePacketAcknowledged) {
@@ -183,6 +182,8 @@ public class ReliableDataTransferSender {
             }
         }
         
+        System.out.println(
+                "Received timeout for packet with id=" + packetId + " and header=" + packet[0]);
         sendPacket(packetId, packet);
     }
 }
