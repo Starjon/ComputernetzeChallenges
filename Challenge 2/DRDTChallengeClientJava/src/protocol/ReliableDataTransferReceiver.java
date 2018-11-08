@@ -3,6 +3,7 @@ package protocol;
 import client.Utils;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static protocol.ReliableDataTransferProtocol.HEADER_SIZE;
@@ -38,6 +39,8 @@ public class ReliableDataTransferReceiver {
             }
             this.checkForPackets();
         }
+        
+        System.out.println(Arrays.toString(fileContents));
         
         // write to the output file
         Utils.setFileContents(this.fileContents, this.master.getFileID());
@@ -95,10 +98,8 @@ public class ReliableDataTransferReceiver {
                 + " pos=" + pos);
         
         if (!this.received[pos]) {
-            System.arraycopy(packet, HEADER_SIZE, this.fileContents, pos, packet.length - HEADER_SIZE);
-            // for (int i = HEADER_SIZE; i < packet.length; i++) {
-            // this.fileContents.add(packet[i]);
-            // }
+            System.arraycopy(packet, HEADER_SIZE, this.fileContents, pos * DATA_SIZE,
+                    packet.length - HEADER_SIZE);
             this.received[pos] = true;
             updateReceivedUpTo(pos);
         }
@@ -113,7 +114,9 @@ public class ReliableDataTransferReceiver {
     
     private int calculatePos(int sequenceNumber) {
         if (sequenceNumber < (this.receivedUpTo % HEADER_IDS)
-                && sequenceNumber < (this.receivedUpTo + HEADER_IDS / 2) % HEADER_IDS) {
+                && sequenceNumber < (this.receivedUpTo + HEADER_IDS / 2) % HEADER_IDS
+                && (this.receivedUpTo + HEADER_IDS / 2)
+                        % HEADER_IDS < (this.receivedUpTo % HEADER_IDS)) {
             return (this.receivedUpTo - (this.receivedUpTo % HEADER_IDS)) + sequenceNumber
                     + HEADER_IDS;
         } else {
