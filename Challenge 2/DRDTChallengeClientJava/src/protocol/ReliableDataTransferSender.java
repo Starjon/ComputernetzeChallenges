@@ -12,23 +12,25 @@ import static protocol.ReliableDataTransferProtocol.SIZE_PACKET_HEADER;
 
 public class ReliableDataTransferSender {
     
-    private static final int TIMEOUT_MS = 1500; // 1500
+    private static final int TIMEOUT_MS = 1500;
     
     private ReliableDataTransferProtocol master;
     
     private Integer[] fileContents;
     private List<Integer[]> packets;
     
+    // Timeout accours in another thread, thus access to shared variables (in this case the
+    // acknowledgements array) must be synchronized.
     private Object lock = new Object();
     
-    // Might be accessed from another thread, thus volatile.
+    // Might be accessed from a timeout thread, thus volatile.
     private volatile boolean sizePacketAcknowledged;
+    private boolean[] acknowledgements;
     private boolean transmissionFinished;
     
-    private boolean[] acknowledgements;
+    private int nextPacketId;
     private int[] sequenceIdToPacketId = new int[ReliableDataTransferProtocol.HEADER_IDS];
     private int lastAcknowledged = -1;
-    private int nextPacketId;
     
     public ReliableDataTransferSender(ReliableDataTransferProtocol master) {
         this.master = master;
