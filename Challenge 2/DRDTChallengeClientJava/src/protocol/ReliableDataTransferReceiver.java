@@ -30,7 +30,7 @@ public class ReliableDataTransferReceiver {
         this.bufferedPackets = new ArrayList<>();
         
         this.checkForPackets();
-        while (this.receivedUpTo < this.amountOfPackets || this.amountOfPackets < 0) {
+        while (this.receivedUpTo + 1 < this.amountOfPackets || this.amountOfPackets < 0) {
             try {
                 Thread.sleep(10);
             } catch (InterruptedException e) {
@@ -75,10 +75,10 @@ public class ReliableDataTransferReceiver {
         }
         
         this.fileContents = new Integer[new BigInteger(bytes).intValue()];
-        this.amountOfPackets = (int) Math.ceil(fileContents.length / (double) DATA_SIZE);
+        this.amountOfPackets = (int) Math.ceil(this.fileContents.length / (double) DATA_SIZE);
         this.received = new boolean[this.amountOfPackets];
         
-        System.out.println("Received size packet, exepcting " + fileContents.length + " bytes in "
+        System.out.println("Received size packet, exepcting " + this.fileContents.length + " bytes in "
                 + this.amountOfPackets + " packets.");
         
         for (Integer[] other: this.bufferedPackets) {
@@ -95,7 +95,7 @@ public class ReliableDataTransferReceiver {
                 + " pos=" + pos);
         
         if (!this.received[pos]) {
-            System.arraycopy(packet, HEADER_SIZE, fileContents, pos, packet.length - HEADER_SIZE);
+            System.arraycopy(packet, HEADER_SIZE, this.fileContents, pos, packet.length - HEADER_SIZE);
             // for (int i = HEADER_SIZE; i < packet.length; i++) {
             // this.fileContents.add(packet[i]);
             // }
