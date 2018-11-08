@@ -126,6 +126,7 @@ public class ReliableDataTransferReceiver {
             while (this.receivedUpTo < this.amountOfPackets - 1
                     && this.received[this.receivedUpTo + 1]) {
                 this.receivedUpTo++;
+                System.out.println("Moved receivedUpTo to " + this.receivedUpTo);
             }
         }
     }
