@@ -3,7 +3,6 @@ package protocol;
 import client.Utils;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static protocol.ReliableDataTransferProtocol.HEADER_SIZE;
@@ -39,8 +38,6 @@ public class ReliableDataTransferReceiver {
             }
             this.checkForPackets();
         }
-        
-        System.out.println(Arrays.toString(fileContents));
         
         // write to the output file
         Utils.setFileContents(this.fileContents, this.master.getFileID());
