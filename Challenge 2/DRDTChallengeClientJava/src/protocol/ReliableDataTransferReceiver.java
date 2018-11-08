@@ -88,12 +88,11 @@ public class ReliableDataTransferReceiver {
     
     private void readPacket(Integer[] packet) {
         int header = packet[0];
-        // tell the user
-        System.out.println("Received packet, length=" + packet.length + " header=" + header);
-        
-        // append the packet's data part (excluding the header) to the fileContents array,
-        // first making it larger
         int pos = calculatePos(header);
+        
+        // tell the user
+        System.out.println("Received packet, length=" + packet.length + " header=" + header
+                + " pos=" + pos);
         
         if (!this.received[pos]) {
             System.arraycopy(packet, HEADER_SIZE, fileContents, pos, packet.length - HEADER_SIZE);
@@ -101,9 +100,9 @@ public class ReliableDataTransferReceiver {
             // this.fileContents.add(packet[i]);
             // }
             this.received[pos] = true;
+            updateReceivedUpTo(pos);
         }
         
-        updateReceivedUpTo(pos);
         sendAcknowledgement(header);
     }
     

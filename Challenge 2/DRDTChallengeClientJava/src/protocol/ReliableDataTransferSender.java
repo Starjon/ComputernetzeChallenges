@@ -12,7 +12,7 @@ import static protocol.ReliableDataTransferProtocol.SIZE_PACKET_HEADER;
 
 public class ReliableDataTransferSender {
     
-    private static final int TIMEOUT_MS = 5000;
+    private static final int TIMEOUT_MS = 10000;
     
     private ReliableDataTransferProtocol master;
     
@@ -116,7 +116,8 @@ public class ReliableDataTransferSender {
     private void sendPacket(int packetId, Integer[] packet) {
         registerTimeout(packetId, packet);
         this.master.getNetworkLayer().sendPacket(packet);
-        System.out.println("Sent one packet with id=" + packetId + " and header=" + packet[0]);
+        System.out.println("Sent one packet with id=" + packetId + ", header=" + packet[0]
+                + " and length=" + packet.length);
     }
     
     private void setHeader(Integer[] packet) {
@@ -147,7 +148,8 @@ public class ReliableDataTransferSender {
                 int packetId = this.sequenceIdToPacketId[packetHeader];
                 this.acknowledgements[packetId] = true;
                 
-                System.out.print("Acknowledged packet with id " + packetId + " and header " + packetHeader);
+                System.out.println(
+                        "Acknowledged packet with id=" + packetId + " and header=" + packetHeader);
                 
                 while (packetId - 1 == this.lastAcknowledged
                         && packetId < this.acknowledgements.length
