@@ -48,7 +48,7 @@ public class ReliableDataTransferSender {
         while (this.nextPacketId < this.packets.size()) {
             while (this.nextPacketId < this.packets.size() && Utils.modulo(
                     this.nextPacketId % HEADER_IDS - this.lastAcknowledged % HEADER_IDS,
-                    HEADER_IDS) < HEADER_IDS / 3) {
+                    HEADER_IDS) < HEADER_IDS / 10) {
                 justChecked = false;
                 sendPacketForFirstTime(this.packets.get(this.nextPacketId));
             }
