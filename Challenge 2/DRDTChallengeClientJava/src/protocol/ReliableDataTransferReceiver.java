@@ -114,7 +114,10 @@ public class ReliableDataTransferReceiver {
         int x = (this.receivedUpTo - r) / HEADER_IDS;
         int a = sequenceNumber;
         
-        if (a >= r + (HEADER_IDS / 2)) {
+        if (a < r && a < (r + HEADER_IDS / 2) % HEADER_IDS && (this.receivedUpTo + HEADER_IDS / 2)
+                % HEADER_IDS < (this.receivedUpTo % HEADER_IDS)) {
+            return (x + 1) * HEADER_IDS + a;
+        } else if (a >= r + (HEADER_IDS / 2)) {
             return (x - 1) * HEADER_IDS + a;
         } else {
             return x * HEADER_IDS + a;
