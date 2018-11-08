@@ -142,6 +142,7 @@ public class ReliableDataTransferSender {
                 int packetHeader = packet[0];
                 if (packetHeader == SIZE_PACKET_HEADER) {
                     this.sizePacketAcknowledged = true;
+                    System.out.println("Acknowledged size packet with header=" + packetHeader);
                     continue;
                 }
                 

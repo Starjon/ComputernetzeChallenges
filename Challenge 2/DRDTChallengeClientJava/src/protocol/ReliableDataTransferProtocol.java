@@ -3,7 +3,7 @@ package protocol;
 public class ReliableDataTransferProtocol extends IRDTProtocol {
     
     static final int HEADER_SIZE = 1; // number of header bytes in each packet
-    static final int DATA_SIZE = 175; // max. number of user data bytes in each packet
+    static final int DATA_SIZE = 200; // max. number of user data bytes in each packet
     
     static final int HEADER_IDS = 255;
     static final int SIZE_PACKET_HEADER = 255;
