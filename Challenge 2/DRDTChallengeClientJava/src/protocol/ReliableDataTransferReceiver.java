@@ -124,6 +124,7 @@ public class ReliableDataTransferReceiver {
     private void updateReceivedUpTo(int pos) {
         if (pos == this.receivedUpTo + 1) {
             this.receivedUpTo++;
+            System.out.println("Moved receivedUpTo to " + this.receivedUpTo);
             while (this.receivedUpTo < this.amountOfPackets - 1
                     && this.received[this.receivedUpTo + 1]) {
                 this.receivedUpTo++;
