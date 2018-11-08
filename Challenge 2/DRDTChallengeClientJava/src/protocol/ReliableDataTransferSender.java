@@ -12,8 +12,7 @@ import static protocol.ReliableDataTransferProtocol.SIZE_PACKET_HEADER;
 
 public class ReliableDataTransferSender {
     
-    private static final int TIMEOUT_MS = 1550; // 1500
-    volatile int numTimeouts;
+    private static final int TIMEOUT_MS = 1500; // 1500
     
     private ReliableDataTransferProtocol master;
     
@@ -184,10 +183,8 @@ public class ReliableDataTransferSender {
             }
         }
         
-        numTimeouts++;
         System.out.println(
                 "Received timeout for packet with id=" + packetId + " and header=" + packet[0]);
-        System.out.println("TIMEOUTS: " + numTimeouts);
         sendPacket(packetId, packet);
     }
 }
