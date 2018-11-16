@@ -23,7 +23,7 @@ public class MyProtocol implements IMACProtocol {
 
     @Override
     public TransmissionInfo TimeslotAvailable(MediumState previousMediumState,
-                                              int controlInformation, int localQueueLength) {
+            int controlInformation, int localQueueLength) {
         // No data to send, just be quiet
         if (localQueueLength == 0) {
             System.out.println("SLOT - No data to send.");
