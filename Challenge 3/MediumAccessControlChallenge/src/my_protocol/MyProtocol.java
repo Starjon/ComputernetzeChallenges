@@ -33,6 +33,8 @@ public class MyProtocol implements IMACProtocol {
         // No data to send, just be quiet
         if (localQueueLength == 0) {
             System.out.println("SLOT - No data to send.");
+            this.lastNonSilentWasSuccess = previousMediumState == MediumState.Succes
+                    || (previousMediumState == MediumState.Idle && this.lastNonSilentWasSuccess);
             this.packagesSent = 0;
             this.triedToSendLastTime = false;
             return new TransmissionInfo(TransmissionType.Silent, 0);
@@ -118,8 +120,7 @@ public class MyProtocol implements IMACProtocol {
     }
 
     private boolean continueToken(int localQueueLength) {
-        // return this.packagesSent > localQueueLength;
-        return true;
+        return 3 * this.packagesSent < localQueueLength;
     }
 
 }
