@@ -6,22 +6,17 @@ import framework.TransmissionInfo;
 import framework.TransmissionType;
 
 /**
- * A fairly trivial Medium Access Control scheme.
+ * A improved Medium Access Control scheme.
  *
- * @author Jaco ter Braak, University of Twente
- * @version 05-12-2013
+ * @author Jonas Becker, Daniel Beckmann
+ * @version 22-11-2018
  *
- * Copyright University of Twente, 2013-2018
- *
- * This file may only be distributed unmodified.
- * In particular, a correct solution to the challenge must NOT be posted
- * in public places, to preserve the learning effect for future students.
  */
 public class MyProtocol implements IMACProtocol {
 
-    private static final double SEND_AFTER_COLLISION_PROBABILITY = 0.3;
-    private static final double SEND_AFTER_FINISHED_PROBABILITY = 0.6;
-    private static final double SEND_AFTER_IDLE_PROBABILITY = 0.6;
+    private static final double SEND_AFTER_COLLISION_PROBABILITY = 0.25;
+    private static final double SEND_AFTER_FINISHED_PROBABILITY = 0.5;
+    private static final double SEND_AFTER_IDLE_PROBABILITY = 0.5;
     
     private boolean lastNonSilentWasSuccess = true;
     private boolean triedToSendLastTime = false;
@@ -121,7 +116,7 @@ public class MyProtocol implements IMACProtocol {
 
     private boolean continueToken(int localQueueLength) {
 //        return 3 * this.packagesSent < localQueueLength;
-        return Math.random() /this.packagesSent * 2 <= 0.5;
+        return Math.random() /this.packagesSent * 6 >= 0.5;
     }
 
 }
