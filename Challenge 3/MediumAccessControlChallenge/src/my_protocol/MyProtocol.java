@@ -120,7 +120,8 @@ public class MyProtocol implements IMACProtocol {
     }
 
     private boolean continueToken(int localQueueLength) {
-        return 3 * this.packagesSent < localQueueLength;
+//        return 3 * this.packagesSent < localQueueLength;
+        return Math.random() /this.packagesSent * 2 <= 0.5;
     }
 
 }
