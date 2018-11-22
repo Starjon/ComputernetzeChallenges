@@ -15,19 +15,19 @@ import java.io.InputStream;
  * @version 03-03-2018
  */
 public class Program {
-    
+
     // Change to your group authentication token
-    private static String groupToken = "d068ec0c-5607-45b4-bb81-60863487c451";
-    
+    private static String groupToken = "0c4bf5c0-0c96-4119-85a4-b0f9d55dd1a3";
+
     // Change to your protocol implementation
     private static IMACProtocol protocol = new MyProtocol();
-    
+
     // Challenge server address
     private static String serverAddress = "networkingchallenges.ewi.utwente.nl";
-    
+
     // Challenge server port
     private static int serverPort = 8003;
-    
+
     /*
      *
      *
@@ -42,19 +42,19 @@ public class Program {
         MACChallengeClient client = null;
         try {
             System.out.println("[FRAMEWORK] Starting client... ");
-            
+
             // Create the client
             client = new MACChallengeClient(serverAddress, serverPort, groupToken);
-            
+
             System.out.println("[FRAMEWORK] Done.");
-            
+
             // Set protocol
             client.setListener(protocol);
-            
+
             System.out.println("[FRAMEWORK] Press Enter to start the simulation...");
             System.out
             .println("[FRAMEWORK] (Simulation will also be started automatically if another client in the group issues the start command)");
-            
+
             boolean startCommand = false;
             InputStream inputStream = new BufferedInputStream(System.in);
             while (!client.isSimulationStarted() && !client.isSimulationFinished()) {
@@ -64,17 +64,17 @@ public class Program {
                 }
                 Thread.sleep(10);
             }
-            
+
             System.out.println("[FRAMEWORK] Simulation started!");
-            
+
             // Wait until the simulation ends
             while (!client.isSimulationFinished()) {
                 Thread.sleep(10);
             }
-            
+
             System.out
             .println("[FRAMEWORK] Simulation stopped! Check your performance on the server web interface.");
-            
+
         } catch (IOException e) {
             System.out.print("[FRAMEWORK ERROR] Could not start the client, because: ");
             e.printStackTrace();

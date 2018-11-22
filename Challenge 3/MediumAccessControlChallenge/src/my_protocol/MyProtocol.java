@@ -15,12 +15,12 @@ import framework.TransmissionType;
 public class MyProtocol implements IMACProtocol {
 
     private static final double SEND_AFTER_COLLISION_PROBABILITY = 0.25;
-    private static final double SEND_AFTER_FINISHED_PROBABILITY = 0.5;
-    private static final double SEND_AFTER_IDLE_PROBABILITY = 0.5;
+    private static final double SEND_AFTER_FINISHED_PROBABILITY = 0.45;
+    private static final double SEND_AFTER_IDLE_PROBABILITY = 0.55;
     
     private boolean lastNonSilentWasSuccess = true;
     private boolean triedToSendLastTime = false;
-    private int packagesSent = 0;
+    private int packetsSent = 0;
     
     @Override
     public TransmissionInfo TimeslotAvailable(MediumState previousMediumState,
@@ -30,7 +30,7 @@ public class MyProtocol implements IMACProtocol {
             System.out.println("SLOT - No data to send.");
             this.lastNonSilentWasSuccess = previousMediumState == MediumState.Succes
                     || (previousMediumState == MediumState.Idle && this.lastNonSilentWasSuccess);
-            this.packagesSent = 0;
+            this.packetsSent = 0;
             this.triedToSendLastTime = false;
             return new TransmissionInfo(TransmissionType.Silent, 0);
         }
@@ -41,13 +41,13 @@ public class MyProtocol implements IMACProtocol {
             if (Math.random() < SEND_AFTER_COLLISION_PROBABILITY) {
                 System.out.println(
                         "SLOT - After collision. Send data and hope for no further collision.");
-                this.packagesSent = 1;
+                this.packetsSent = 1;
                 this.triedToSendLastTime = true;
                 return new TransmissionInfo(TransmissionType.Data,
                         continueToken(localQueueLength) ? 1 : 0);
             } else {
                 System.out.println("SLOT - After collision. Wait to avoid further collision.");
-                this.packagesSent = 0;
+                this.packetsSent = 0;
                 this.triedToSendLastTime = false;
                 return new TransmissionInfo(TransmissionType.Silent, 0);
             }
@@ -57,14 +57,13 @@ public class MyProtocol implements IMACProtocol {
             this.lastNonSilentWasSuccess = true;
             if (this.triedToSendLastTime) {
                 if (controlInformation == 1) {
-                    this.packagesSent++;
+                    this.packetsSent++;
                     this.triedToSendLastTime = true;
                     System.out.println("SLOT - After success. We have the token, send.");
                     return new TransmissionInfo(TransmissionType.Data,
                             continueToken(localQueueLength) ? 1 : 0);
                 }
-                // ggf warten bis silent oder information 0 war, bevor wieder schicken
-                this.packagesSent = 0;
+                this.packetsSent = 0;
                 this.triedToSendLastTime = false;
                 System.out.println("SLOT - After success. We gave up the token. Wait.");
                 return new TransmissionInfo(TransmissionType.Silent, 0);
@@ -73,7 +72,7 @@ public class MyProtocol implements IMACProtocol {
             // Another node has the token
             if (controlInformation == 1) {
                 System.out.println("SLOT - After success. Another node has the token. Wait.");
-                this.packagesSent = 0;
+                this.packetsSent = 0;
                 this.triedToSendLastTime = false;
                 return new TransmissionInfo(TransmissionType.Silent, 0);
             }
@@ -83,7 +82,7 @@ public class MyProtocol implements IMACProtocol {
                 .println(
                         "SLOT - After success. Another node finished. Send data and hope for no collision.");
                 this.triedToSendLastTime = true;
-                this.packagesSent = 1;
+                this.packetsSent = 1;
                 return new TransmissionInfo(TransmissionType.Data,
                         continueToken(localQueueLength) ? 1 : 0);
             } else {
@@ -99,12 +98,12 @@ public class MyProtocol implements IMACProtocol {
                 System.out.println(
                         "SLOT - Idle. Send data and hope for no collision.");
                 this.triedToSendLastTime = true;
-                this.packagesSent = 1;
+                this.packetsSent = 1;
                 return new TransmissionInfo(TransmissionType.Data,
                         continueToken(localQueueLength) ? 1 : 0);
             } else {
                 System.out.println("SLOT - Idle. Wait to avoid collision.");
-                this.packagesSent = 0;
+                this.packetsSent = 0;
                 this.triedToSendLastTime = false;
                 return new TransmissionInfo(TransmissionType.Silent, 0);
             }
@@ -115,8 +114,7 @@ public class MyProtocol implements IMACProtocol {
     }
 
     private boolean continueToken(int localQueueLength) {
-//        return 3 * this.packagesSent < localQueueLength;
-        return Math.random() /this.packagesSent * 6 >= 0.5;
+        return Math.random() / this.packetsSent * 6 >= 0.3;
     }
 
 }
