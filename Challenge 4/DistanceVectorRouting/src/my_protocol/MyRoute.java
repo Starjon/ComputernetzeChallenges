@@ -11,6 +11,11 @@ package my_protocol;
  * in public places, to preserve the learning effect for future students.
  */
 public class MyRoute {
-    public int nextHop;
-    public int cost;
+    public final int nextHop;
+    public final int cost;
+
+    public MyRoute(int nextHop, int cost){
+        this.nextHop = nextHop;
+        this.cost = cost;
+    }
 }

@@ -19,7 +19,8 @@ public class MyRoutingProtocol implements IRoutingProtocol {
     private LinkLayer linkLayer;
 
     // You can use this data structure to store your routing table.
-    private HashMap<Integer, MyRoute> myRoutingTable = new HashMap<>();
+    private Map<Integer, MyRoute> myRoutingTable = new HashMap<>();
+
 
     @Override
     public void init(LinkLayer linkLayer) {
@@ -35,6 +36,8 @@ public class MyRoutingProtocol implements IRoutingProtocol {
         System.out.println("tick; received " + packets.length + " packets");
         int i;
 
+        this.myRoutingTable.clear();
+
         // first process the incoming packets; loop over them:
         for (i = 0; i < packets.length; i++) {
             int neighbour = packets[i].getSourceAddress();          // from whom is the packet?
@@ -42,34 +45,27 @@ public class MyRoutingProtocol implements IRoutingProtocol {
             DataTable dt = packets[i].getDataTable();                    // other data contained in the packet
             System.out.printf("received packet from %d with %d rows and %d columns of data%n", neighbour, dt.getNRows(), dt.getNColumns());
 
-            // you'll probably want to process the data, update your data structures (myRoutingTable) , etc....
+            for (int j=0; j< dt.getNRows();j++){
+                int dest = dt.get(j,0);
+                if(dest == this.linkLayer.getOwnAddress()){
+                    continue;
+                }
+                if(dt.get(j,2) == this.linkLayer.getOwnAddress()){
+                    continue;
+                }
+                MyRoute current = this.myRoutingTable.get(dest);
+                if(current == null || current.cost > linkcost + dt.get(j,1) || current.nextHop == neighbour) {
+                    MyRoute newEntry = new MyRoute(neighbour, linkcost + dt.get(j, 1));
+                    this.myRoutingTable.put(dest, newEntry);
+                }
+            }
 
-            // reading one cell from the DataTable can be done using the  dt.get(row,column)  method
-
-           /* example code for inserting a route into myRoutingTable:
-               MyRoute r = new MyRoute();
-               r.nextHop = ...someneighbour...;
-               myRoutingTable.put(...somedestination... , r);
-           */
-
-           /* example code for checking whether some destination is already in myRoutingTable, and accessing it:
-               if (myRoutingTable.containsKey(dest)) {
-                   MyRoute r = myRoutingTable.get(dest);
-                   // do something with r.destination and r.nextHop; you can even modify them
-               }
-           */
 
         }
 
-        // and send out one (or more, if you want) distance vector packets
-        // the actual distance vector data must be stored in the DataTable structure
-        DataTable dt = new DataTable(6);   // the 6 is the number of columns, you can change this
-        // you'll probably want to put some useful information into dt here
-        // by using the  dt.set(row, column, value)  method.
 
-        // next, actually send out the packet, with our own address as the source address
-        // and 0 as the destination address: that's a broadcast to be received by all neighbours.
-        Packet pkt = new Packet(myAddress, 0, dt);
+
+        Packet pkt = new Packet(myAddress, 0, getTableToSend());
         this.linkLayer.transmit(pkt);
 
         /*
@@ -78,6 +74,17 @@ public class MyRoutingProtocol implements IRoutingProtocol {
         Read the JavaDoc of Packet to see how you can do this.
         PLEASE NOTE! Although we provide this option we do not support it.
         */
+    }
+
+    private DataTable getTableToSend(){
+        DataTable dt = new DataTable(3);
+        dt.setRow(0,new Integer[]{this.linkLayer.getOwnAddress(),0,0});
+        int i = 1;
+        for(Map.Entry<Integer, MyRoute> entry: myRoutingTable.entrySet()){
+            dt.setRow(i,new Integer[]{entry.getKey(),entry.getValue().cost,entry.getValue().nextHop});
+            i++;
+        }
+        return dt;
     }
 
     public HashMap<Integer, Integer> getForwardingTable() {
@@ -90,6 +97,8 @@ public class MyRoutingProtocol implements IRoutingProtocol {
         for (Map.Entry<Integer, MyRoute> entry : myRoutingTable.entrySet()) {
             ft.put(entry.getKey(), entry.getValue().nextHop);
         }
+
+        ft.put(this.linkLayer.getOwnAddress(),this.linkLayer.getOwnAddress());
 
         return ft;
     }
