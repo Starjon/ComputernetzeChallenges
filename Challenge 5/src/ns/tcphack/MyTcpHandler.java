@@ -1,6 +1,7 @@
 package ns.tcphack;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -13,11 +14,11 @@ class MyTcpHandler extends TcpHandler {
     
     private static final short SOURCE_PORT = 25566;
     private static final short DESTINATION_PORT = 7710;
-    private static final short TCP_SIZE = 16;
     
     private static int MAX_SIZE = 1 << 16;
     
-    private int lastReceivedSeqNr;
+    private int nextOwnSeqNr;
+    private int lastRecievedForeignSeqNr;
     
     private ByteBuffer received;
     
@@ -37,7 +38,7 @@ class MyTcpHandler extends TcpHandler {
     }
     
     public static int[] convertToBytes(int val) {
-        ByteBuffer buffer = ByteBuffer.allocate(2);
+        ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.putInt(val);
         byte[] bytes = buffer.array();
         int[] result = new int[bytes.length];
@@ -47,6 +48,13 @@ class MyTcpHandler extends TcpHandler {
         return result;
     }
     
+    public static int convertFromBytes(int[] bytes, int startIndex) {
+        System.out.println(bytes[startIndex] + " " + bytes[startIndex + 1] + " "
+                + bytes[startIndex + 2] + " " + bytes[startIndex + 3]);
+        return bytes[startIndex] << 24 | bytes[startIndex + 1] << 16 | bytes[startIndex + 2] << 8
+                | bytes[startIndex + 3];
+    }
+    
     public MyTcpHandler() {
         super();
         
@@ -54,50 +62,32 @@ class MyTcpHandler extends TcpHandler {
         
         boolean done = false;
         
-        // array of bytes in which we're going to build our packet:
-        int[] txpkt = new int[TCP_SIZE + 40]; // 40 bytes long for now, may need to expand this
-                                              // later
-        
-        int index = 0;
-        txpkt[index++] = 0x60; // first byte of the IPv6 header contains version number in upper
-                               // nibble
-        // Fill rest of first header row.
-        txpkt[index++] = 0;
-        txpkt[index++] = 0;
-        txpkt[index++] = 0;
-        
-        // Payload length
-        txpkt[index++] = 0;
-        txpkt[index++] = TCP_SIZE;
-        // Protocol
-        txpkt[index++] = 0xfd; // special TCP
-        // Hop limit
-        txpkt[index++] = 0x40;
-        
-        // Source adress
-        for (int i = 0; i < SOURCE_ADRESS.length; i++) {
-            txpkt[index++] = SOURCE_ADRESS[i];
-        }
-        // Destination adress
-        for (int i = 0; i < DESTINATION_ADRESS.length; i++) {
-            txpkt[index++] = DESTINATION_ADRESS[i];
-        }
-        
-        System.out.println("tcp begin: " + index);
-        int[] tcpPkt = getTcpPacket();
-        if (tcpPkt.length != TCP_SIZE) {
-            throw new IndexOutOfBoundsException(
-                    "tcpPkt length " + tcpPkt.length + ", expected " + TCP_SIZE);
-        }
-        for (int i = 0; i < tcpPkt.length; i++) {
-            txpkt[index++] = tcpPkt[i];
-        }
-        
-        System.out.println(txpkt.length);
-        System.out.println(Arrays.stream(txpkt).mapToObj(i -> Integer.toHexString(i))
+        int[] synPkt = getIpPacket(getTcpSynPacket());
+        System.out.println(synPkt.length);
+        System.out.println(Arrays.stream(synPkt).mapToObj(i -> Integer.toHexString(i))
                 .map(s -> s.length() == 0 ? "00" : s.length() == 1 ? ("0" + s) : s)
                 .collect(Collectors.joining()));
-        sendData(txpkt); // send the packet
+        sendData(synPkt); // send the packet
+        
+        int[] synAckPkt;
+        while ((synAckPkt = receiveData(500)).length == 0) {
+            // wait
+        }
+        System.out.println("Received synAckPkt: " + Arrays.toString(synAckPkt));
+        this.lastRecievedForeignSeqNr = convertFromBytes(synAckPkt, 44);
+        System.out.println(this.lastRecievedForeignSeqNr);
+        
+        int ackSynPkt[] = getIpPacket(getTcpAckSynPacket());
+        sendData(ackSynPkt);
+        
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+        int getRequestPkt[] = getIpPacket(getTcpGetRequestPacket());
+        sendData(getRequestPkt);
         
         while (!done) {
             // check for reception of a packet, but wait at most 500 ms:
@@ -121,8 +111,50 @@ class MyTcpHandler extends TcpHandler {
         }
     }
     
-    private int[] getTcpPacket() {
-        int[] tcpPkt = new int[TCP_SIZE];
+    private int[] getTcpGetRequestPacket() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+    
+    private int[] getIpPacket(int[] tcpPkt) {
+        // array of bytes in which we're going to build our packet:
+        int[] txpkt = new int[tcpPkt.length + 40]; // 40 bytes long for now, may need to expand this
+        // later
+        
+        int index = 0;
+        txpkt[index++] = 0x60; // first byte of the IPv6 header contains version number in upper
+                               // nibble
+        // Fill rest of first header row.
+        txpkt[index++] = 0;
+        txpkt[index++] = 0;
+        txpkt[index++] = 0;
+        
+        // Payload length
+        txpkt[index++] = 0;
+        txpkt[index++] = tcpPkt.length;
+        // Protocol
+        txpkt[index++] = 0xfd; // special TCP
+        // Hop limit
+        txpkt[index++] = 0x40;
+        
+        // Source adress
+        for (int i = 0; i < SOURCE_ADRESS.length; i++) {
+            txpkt[index++] = SOURCE_ADRESS[i];
+        }
+        // Destination adress
+        for (int i = 0; i < DESTINATION_ADRESS.length; i++) {
+            txpkt[index++] = DESTINATION_ADRESS[i];
+        }
+        
+        for (int i = 0; i < tcpPkt.length; i++) {
+            txpkt[index++] = tcpPkt[i];
+        }
+        
+        return txpkt;
+    }
+    
+    private int[] getTcpBasePacket(int size) {
+        int[] tcpPkt = new int[size];
         int index = 0;
         
         int[] srcPort = convertToBytes(SOURCE_PORT);
@@ -133,6 +165,93 @@ class MyTcpHandler extends TcpHandler {
         int[] destPort = convertToBytes(DESTINATION_PORT);
         for (int i = 0; i < destPort.length; i++, index++) {
             tcpPkt[index] = destPort[i];
+        }
+        
+        index += 8;
+        
+        // Header length && unused (teilweise)
+        tcpPkt[index++] = 0x50;
+        // Rest von unused und 6 flag bits
+        tcpPkt[index++] = 0b00000000;
+        // Advertised recevie window
+        tcpPkt[index++] = 0;
+        tcpPkt[index++] = 0xFF;
+        // Checksum
+        tcpPkt[index++] = 0;
+        tcpPkt[index++] = 0;
+        // Urgent pointer
+        tcpPkt[index++] = 0;
+        tcpPkt[index++] = 0;
+        
+        return tcpPkt;
+    }
+    
+    private void activateSyn(int[] tcpPkt) {
+        tcpPkt[13] |= 0b00000010;
+    }
+    
+    private void activateAck(int[] tcpPkt) {
+        tcpPkt[13] |= 0b00010000;
+    }
+    
+    private int[] getTcpSynPacket() {
+        int[] tcpPkt = getTcpBasePacket(20);
+        int index = 4;
+        
+        int[] seqNr = convertToBytes(this.nextOwnSeqNr++);
+        for (int i = 0; i < seqNr.length; i++) {
+            tcpPkt[index++] = seqNr[i];
+        }
+        
+        int[] ackNr = convertToBytes(0);
+        for (int i = 0; i < ackNr.length; i++) {
+            tcpPkt[index++] = ackNr[i];
+        }
+        
+        activateSyn(tcpPkt);
+        
+        return tcpPkt;
+    }
+    
+    private int[] getTcpAckSynPacket() {
+        int[] tcpPkt = getTcpBasePacket(20);
+        int index = 4;
+        
+        int[] seqNr = convertToBytes(this.nextOwnSeqNr++);
+        for (int i = 0; i < seqNr.length; i++) {
+            tcpPkt[index++] = seqNr[i];
+        }
+        
+        int[] ackNr = convertToBytes(this.lastRecievedForeignSeqNr + 1);
+        for (int i = 0; i < ackNr.length; i++) {
+            tcpPkt[index++] = ackNr[i];
+        }
+        
+        activateAck(tcpPkt);
+        
+        return tcpPkt;
+    }
+    
+    private int[] getTcpGetRequest(int matNr) {
+        String request = "GET /" + matNr + " HTTP/1.0";
+        byte[] requestBytes = Charset.forName("US-ASCII").encode(request).array();
+        
+        int[] tcpPkt = getTcpBasePacket(20 + requestBytes.length);
+        int index = 4;
+        
+        int[] seqNr = convertToBytes(this.nextOwnSeqNr++);
+        for (int i = 0; i < seqNr.length; i++) {
+            tcpPkt[index++] = seqNr[i];
+        }
+        
+        int[] ackNr = convertToBytes(this.lastRecievedForeignSeqNr + 1);
+        for (int i = 0; i < ackNr.length; i++) {
+            tcpPkt[index++] = ackNr[i];
+        }
+        
+        index = 20;
+        for (int i = 0; i < requestBytes.length; i++) {
+            tcpPkt[index++] = 0xFF & requestBytes[i];
         }
         
         return tcpPkt;
