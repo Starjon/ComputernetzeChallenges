@@ -1,6 +1,8 @@
 package ns.tcphack;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 class MyTcpHandler extends TcpHandler {
     
@@ -23,16 +25,26 @@ class MyTcpHandler extends TcpHandler {
         new MyTcpHandler();
     }
     
-    public static byte[] convertToBytes(short s) {
+    public static int[] convertToBytes(short val) {
         ByteBuffer buffer = ByteBuffer.allocate(2);
-        buffer.putShort(s);
-        return buffer.array();
+        buffer.putShort(val);
+        byte[] bytes = buffer.array();
+        int[] result = new int[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            result[i] = 0xFF & bytes[i];
+        }
+        return result;
     }
     
-    public static byte[] convertToBytes(int i) {
+    public static int[] convertToBytes(int val) {
         ByteBuffer buffer = ByteBuffer.allocate(2);
-        buffer.putInt(i);
-        return buffer.array();
+        buffer.putInt(val);
+        byte[] bytes = buffer.array();
+        int[] result = new int[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            result[i] = 0xFF & bytes[i];
+        }
+        return result;
     }
     
     public MyTcpHandler() {
@@ -55,6 +67,7 @@ class MyTcpHandler extends TcpHandler {
         txpkt[index++] = 0;
         
         // Payload length
+        txpkt[index++] = 0;
         txpkt[index++] = TCP_SIZE;
         // Protocol
         txpkt[index++] = 0xfd; // special TCP
@@ -70,7 +83,8 @@ class MyTcpHandler extends TcpHandler {
             txpkt[index++] = DESTINATION_ADRESS[i];
         }
         
-        byte[] tcpPkt = getTcpPacket();
+        System.out.println("tcp begin: " + index);
+        int[] tcpPkt = getTcpPacket();
         if (tcpPkt.length != TCP_SIZE) {
             throw new IndexOutOfBoundsException(
                     "tcpPkt length " + tcpPkt.length + ", expected " + TCP_SIZE);
@@ -79,6 +93,10 @@ class MyTcpHandler extends TcpHandler {
             txpkt[index++] = tcpPkt[i];
         }
         
+        System.out.println(txpkt.length);
+        System.out.println(Arrays.stream(txpkt).mapToObj(i -> Integer.toHexString(i))
+                .map(s -> s.length() == 0 ? "00" : s.length() == 1 ? ("0" + s) : s)
+                .collect(Collectors.joining()));
         sendData(txpkt); // send the packet
         
         while (!done) {
@@ -103,16 +121,16 @@ class MyTcpHandler extends TcpHandler {
         }
     }
     
-    private byte[] getTcpPacket() {
-        byte[] tcpPkt = new byte[TCP_SIZE];
+    private int[] getTcpPacket() {
+        int[] tcpPkt = new int[TCP_SIZE];
         int index = 0;
         
-        byte[] srcPort = convertToBytes(SOURCE_PORT);
+        int[] srcPort = convertToBytes(SOURCE_PORT);
         for (int i = 0; i < srcPort.length; i++, index++) {
             tcpPkt[index] = srcPort[i];
         }
         
-        byte[] destPort = convertToBytes(DESTINATION_PORT);
+        int[] destPort = convertToBytes(DESTINATION_PORT);
         for (int i = 0; i < destPort.length; i++, index++) {
             tcpPkt[index] = destPort[i];
         }
