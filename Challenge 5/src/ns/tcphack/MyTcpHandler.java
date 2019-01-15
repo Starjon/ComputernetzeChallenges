@@ -12,8 +12,8 @@ class MyTcpHandler extends TcpHandler {
     private static final int[] DESTINATION_ADRESS = new int[] {0x20, 0x01, 0x06, 0x7c, 0x25, 0x64,
             0xa1, 0x70, 0x02, 0x04, 0x23, 0xff, 0xfe, 0xde, 0x4b, 0x2c};
     
-    private static final short SOURCE_PORT = 25566;
-    private static final short DESTINATION_PORT = 7710;
+    private static final short SOURCE_PORT = 25575;
+    private static final short DESTINATION_PORT = 7711;
     
     private static int MAX_SIZE = 1 << 16;
     
@@ -24,6 +24,10 @@ class MyTcpHandler extends TcpHandler {
     
     public static void main(String[] args) {
         new MyTcpHandler();
+    }
+    
+    public static Charset charset() {
+        return Charset.forName("ISO-8859-1");
     }
     
     public static int[] convertToBytes(short val) {
@@ -77,16 +81,7 @@ class MyTcpHandler extends TcpHandler {
         this.lastRecievedForeignSeqNr = convertFromBytes(synAckPkt, 44);
         System.out.println(this.lastRecievedForeignSeqNr);
         
-        int ackSynPkt[] = getIpPacket(getTcpAckSynPacket());
-        sendData(ackSynPkt);
-        
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        
-        int getRequestPkt[] = getIpPacket(getTcpGetRequestPacket());
+        int getRequestPkt[] = getIpPacket(getTcpGetRequest(416096));
         sendData(getRequestPkt);
         
         while (!done) {
@@ -99,21 +94,30 @@ class MyTcpHandler extends TcpHandler {
             }
             
             // something has been received
-            int len = rxpkt.length;
+            // int len = rxpkt.length;
             
             // print the received bytes:
-            int i;
-            System.out.print("Received " + len + " bytes: ");
-            for (i = 0; i < len; i++) {
-                System.out.print(rxpkt[i] + " ");
+            // int i;
+            // System.out.print("Received " + len + " bytes: ");
+            // for (i = 0; i < len; i++) {
+            // System.out.print(rxpkt[i] + " ");
+            // }
+            // System.out.println("");
+            
+            if (rxpkt.length <= 60) {
+                continue;
             }
-            System.out.println("");
+            
+            String tcpMsg = "tcpMsg: ";
+            ByteBuffer buffer = ByteBuffer.allocate(rxpkt.length - 60);
+            for (int j = 60; j < rxpkt.length; j++) {
+                buffer.put((byte) rxpkt[j]);
+            }
+            tcpMsg += new String(buffer.array(), charset());
+            System.out.println(tcpMsg);
+            
+            sendData(getIpPacket(getTcpAckPacket(rxpkt)));
         }
-    }
-    
-    private int[] getTcpGetRequestPacket() {
-        // TODO Auto-generated method stub
-        return null;
     }
     
     private int[] getIpPacket(int[] tcpPkt) {
@@ -174,7 +178,7 @@ class MyTcpHandler extends TcpHandler {
         // Rest von unused und 6 flag bits
         tcpPkt[index++] = 0b00000000;
         // Advertised recevie window
-        tcpPkt[index++] = 0;
+        tcpPkt[index++] = 0xA0;
         tcpPkt[index++] = 0xFF;
         // Checksum
         tcpPkt[index++] = 0;
@@ -213,19 +217,23 @@ class MyTcpHandler extends TcpHandler {
         return tcpPkt;
     }
     
-    private int[] getTcpAckSynPacket() {
+    private int[] getTcpAckPacket(int[] rxpkt) {
         int[] tcpPkt = getTcpBasePacket(20);
         int index = 4;
         
-        int[] seqNr = convertToBytes(this.nextOwnSeqNr++);
+        int[] seqNr = convertToBytes(this.nextOwnSeqNr);
         for (int i = 0; i < seqNr.length; i++) {
             tcpPkt[index++] = seqNr[i];
         }
         
-        int[] ackNr = convertToBytes(this.lastRecievedForeignSeqNr + 1);
+        this.lastRecievedForeignSeqNr = convertFromBytes(rxpkt, 44);
+        int[] ackNr = convertToBytes(this.lastRecievedForeignSeqNr + rxpkt.length - 60);
         for (int i = 0; i < ackNr.length; i++) {
             tcpPkt[index++] = ackNr[i];
         }
+        
+        System.out.println("sending ACK packet: " + this.lastRecievedForeignSeqNr + " + "
+                + (rxpkt.length - 60));
         
         activateAck(tcpPkt);
         
@@ -233,13 +241,15 @@ class MyTcpHandler extends TcpHandler {
     }
     
     private int[] getTcpGetRequest(int matNr) {
-        String request = "GET /" + matNr + " HTTP/1.0";
-        byte[] requestBytes = Charset.forName("US-ASCII").encode(request).array();
+        String request = "GET /" + matNr + " HTTP/1.0\r\n\r\n"; // \nHost:
+        // [2001:67c:2564:a170:204:23ff:fede:4b2c]:7710
+        byte[] requestBytes = charset().encode(request).array();
         
         int[] tcpPkt = getTcpBasePacket(20 + requestBytes.length);
         int index = 4;
         
-        int[] seqNr = convertToBytes(this.nextOwnSeqNr++);
+        int[] seqNr = convertToBytes(this.nextOwnSeqNr);
+        this.nextOwnSeqNr += requestBytes.length;
         for (int i = 0; i < seqNr.length; i++) {
             tcpPkt[index++] = seqNr[i];
         }
@@ -253,6 +263,8 @@ class MyTcpHandler extends TcpHandler {
         for (int i = 0; i < requestBytes.length; i++) {
             tcpPkt[index++] = 0xFF & requestBytes[i];
         }
+        
+        activateAck(tcpPkt);
         
         return tcpPkt;
     }
