@@ -12,15 +12,11 @@ class MyTcpHandler extends TcpHandler {
     private static final int[] DESTINATION_ADRESS = new int[] {0x20, 0x01, 0x06, 0x7c, 0x25, 0x64,
             0xa1, 0x70, 0x02, 0x04, 0x23, 0xff, 0xfe, 0xde, 0x4b, 0x2c};
     
-    private static final short SOURCE_PORT = 25575;
+    private static final short SOURCE_PORT = 25566;
     private static final short DESTINATION_PORT = 7711;
-    
-    private static int MAX_SIZE = 1 << 16;
     
     private int nextOwnSeqNr;
     private int lastRecievedForeignSeqNr;
-    
-    private ByteBuffer received;
     
     public static void main(String[] args) {
         new MyTcpHandler();
@@ -53,18 +49,12 @@ class MyTcpHandler extends TcpHandler {
     }
     
     public static int convertFromBytes(int[] bytes, int startIndex) {
-        System.out.println(bytes[startIndex] + " " + bytes[startIndex + 1] + " "
-                + bytes[startIndex + 2] + " " + bytes[startIndex + 3]);
         return bytes[startIndex] << 24 | bytes[startIndex + 1] << 16 | bytes[startIndex + 2] << 8
                 | bytes[startIndex + 3];
     }
     
     public MyTcpHandler() {
         super();
-        
-        this.received = ByteBuffer.allocate(MAX_SIZE);
-        
-        boolean done = false;
         
         int[] synPkt = getIpPacket(getTcpSynPacket());
         System.out.println(synPkt.length);
@@ -84,7 +74,7 @@ class MyTcpHandler extends TcpHandler {
         int getRequestPkt[] = getIpPacket(getTcpGetRequest(416096));
         sendData(getRequestPkt);
         
-        while (!done) {
+        while (true) {
             // check for reception of a packet, but wait at most 500 ms:
             int[] rxpkt = receiveData(500);
             if (rxpkt.length == 0) {
@@ -92,17 +82,6 @@ class MyTcpHandler extends TcpHandler {
                 System.out.println("Nothing...");
                 continue;
             }
-            
-            // something has been received
-            // int len = rxpkt.length;
-            
-            // print the received bytes:
-            // int i;
-            // System.out.print("Received " + len + " bytes: ");
-            // for (i = 0; i < len; i++) {
-            // System.out.print(rxpkt[i] + " ");
-            // }
-            // System.out.println("");
             
             if (rxpkt.length <= 60) {
                 continue;
@@ -241,8 +220,7 @@ class MyTcpHandler extends TcpHandler {
     }
     
     private int[] getTcpGetRequest(int matNr) {
-        String request = "GET /" + matNr + " HTTP/1.0\r\n\r\n"; // \nHost:
-        // [2001:67c:2564:a170:204:23ff:fede:4b2c]:7710
+        String request = "GET /" + matNr + " HTTP/1.0\r\n\r\n";
         byte[] requestBytes = charset().encode(request).array();
         
         int[] tcpPkt = getTcpBasePacket(20 + requestBytes.length);
